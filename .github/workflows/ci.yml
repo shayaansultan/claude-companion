@@ -1,0 +1,34 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        python: ["3.11", "3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Unit tests
+        run: python -m unittest discover -s tests -v
+        env:
+          PYTHONPATH: src
+      - name: CLI smoke test
+        run: |
+          chmod +x scripts/claude-companion
+          scripts/claude-companion --version
+          scripts/claude-companion review --help >/dev/null
+          scripts/claude-companion task --help >/dev/null
+      - name: Manifest and skill files are well-formed
+        run: |
+          python -c "import json; json.load(open('.codex-plugin/plugin.json')); json.load(open('.agents/plugins/marketplace.json')); json.load(open('schemas/review-output.schema.json'))"
+          for f in skills/*/SKILL.md; do head -1 "$f" | grep -q '^---$' || { echo "$f missing frontmatter"; exit 1; }; done

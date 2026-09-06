@@ -1,0 +1,49 @@
+#!/bin/sh
+# Launch THIS checkout's CLI.
+#
+# The project is resolved from the script's own location, so the plugin works
+# wherever it is copied — the source dir, or Codex's install cache — with no
+# absolute paths baked in.
+#
+# Codex runs this inside its seatbelt sandbox, where ~/.cache/uv is read-only
+# and `uv run` refuses to start. The package is stdlib-only, so uv is not
+# needed at run time at all: prefer the synced venv, then any Python 3.11+,
+# and fall back to uv only for a bare checkout outside the sandbox.
+#
+# Two things this has to get right (both bit the nudge plugin before):
+#   1. Resolve symlinks. This file is symlinked onto PATH, and `dirname $0`
+#      would otherwise point at ~/.local/bin and pick up an unrelated env.
+#   2. Invoke the module (-m), not the console script, and use --project
+#      rather than --directory so the caller's cwd (their repo) is preserved.
+set -e
+
+SELF=$0
+while [ -L "$SELF" ]; do
+  LINK=$(readlink "$SELF")
+  case $LINK in
+    /*) SELF=$LINK ;;
+    *) SELF=$(dirname -- "$SELF")/$LINK ;;
+  esac
+done
+DIR=$(CDPATH= cd -- "$(dirname -- "$SELF")/.." && pwd)
+
+# Source tree may be read-only where this runs; never fail on bytecode writes.
+export PYTHONDONTWRITEBYTECODE=1
+
+if [ -x "$DIR/.venv/bin/python" ]; then
+  exec "$DIR/.venv/bin/python" -m claude_companion.cli "$@"
+fi
+
+for PY in python3.13 python3.12 python3.11 python3; do
+  if command -v "$PY" >/dev/null 2>&1 && "$PY" -c 'import sys; sys.exit(0 if sys.version_info >= (3, 11) else 1)' 2>/dev/null; then
+    PYTHONPATH="$DIR/src${PYTHONPATH:+:$PYTHONPATH}" exec "$PY" -m claude_companion.cli "$@"
+  fi
+done
+
+if command -v uv >/dev/null 2>&1; then
+  exec uv run --project "$DIR" --quiet python -m claude_companion.cli "$@"
+fi
+
+echo "claude-companion: needs Python 3.11+ or uv on PATH." >&2
+echo "Install uv from https://docs.astral.sh/uv/ and run install.sh" >&2
+exit 1

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Claude Task"
+  short_description: "Delegate a task to Claude Code"
+  default_prompt: "Use $claude-task to ask Claude Code to diagnose the failing test."

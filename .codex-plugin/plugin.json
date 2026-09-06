@@ -1,0 +1,26 @@
+{
+  "name": "claude-companion",
+  "version": "0.1.0",
+  "description": "Hand code review and general tasks to Claude Code from Codex. Runs the Claude CLI headlessly and returns structured findings or a report.",
+  "author": {
+    "name": "Shayaan Sultan"
+  },
+  "license": "MIT",
+  "keywords": [
+    "claude",
+    "claude-code",
+    "code-review",
+    "delegation",
+    "second-opinion"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Claude Companion",
+    "shortDescription": "Review code or delegate a task to Claude Code.",
+    "longDescription": "Get a second opinion from Claude Code without leaving Codex. $claude-review runs a read-only review of the working tree or branch and returns findings ranked by severity with file and line. $claude-task hands any request to Claude, read-only by default or with write access on request, and returns its report.",
+    "developerName": "Shayaan Sultan",
+    "category": "Developer Tools",
+    "capabilities": [],
+    "defaultPrompt": "Use $claude-review to get a second opinion on my current changes."
+  }
+}

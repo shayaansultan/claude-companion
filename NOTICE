@@ -1,0 +1,9 @@
+Claude Companion
+Copyright 2026 Shayaan Sultan
+
+schemas/review-output.schema.json and the review-target resolution logic in
+src/claude_companion/git.py are derived from openai/codex-plugin-cc
+(https://github.com/openai/codex-plugin-cc), Copyright 2026 OpenAI, licensed
+under the Apache License, Version 2.0. You may obtain a copy of that license at
+
+    http://www.apache.org/licenses/LICENSE-2.0
