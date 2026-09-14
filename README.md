@@ -106,7 +106,25 @@ claude-companion setup                      # check claude, auth, git and sandbo
 claude-companion review --dry-run           # print the prompt and command without running
 ```
 
-### Models and effort
+### Profile-aware account selection
+
+OpenCode and other launchers can bind the companion without changing the global
+Claude login:
+
+```sh
+CLAUDE_COMPANION_CONFIG_DIR=/absolute/claude/home \
+CLAUDE_COMPANION_ACCOUNT=work@example.com \
+CLAUDE_COMPANION_HOST=opencode claude-companion setup --json
+```
+
+Use `CLAUDE_COMPANION_CONFIG_DIR=default` for the normal Claude home. Explicit
+`--claude-config-dir` and `--account` flags override the environment on review,
+task and setup commands. An expected account is verified through `claude auth
+status --json` before a task is dispatched. A mismatch fails rather than falling
+back. The parent environment is not modified and no credentials are copied.
+`CLAUDE_COMPANION_HOST=opencode` skips the Codex-only sandbox configuration check.
+
+### Model defaults
 
 | Command | Default model | Default effort |
 | --- | --- | --- |

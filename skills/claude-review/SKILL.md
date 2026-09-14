@@ -17,6 +17,13 @@ claude-companion review [--base <ref>] [--scope auto|working-tree|branch] [--foc
 `claude-companion` is on PATH after install. If it is not, run the copy next to
 this skill: `<this skill's directory>/../../scripts/claude-companion`.
 
+In OpenCode profiles, `CLAUDE_COMPANION_CONFIG_DIR` and
+`CLAUDE_COMPANION_ACCOUNT` select and verify the Claude login. Keep that binding:
+AnswerThis may use its own account while other profiles use Default. An account
+mismatch stops dispatch; do not retry with another account. Run
+`claude-companion setup --json` to inspect the effective binding. From an ordinary
+terminal, `oc native <profile> claude review ...` supplies the same environment.
+
 Scope resolution, in order: an explicit `--base` reviews commits since that ref;
 `--scope working-tree` reviews staged, unstaged and untracked changes;
 `--scope branch` diffs against the detected default branch; `auto` (the

@@ -3,12 +3,13 @@
 from __future__ import annotations
 
 import json
-import os
 import shutil
 import subprocess
 import sys
 from dataclasses import dataclass, field
 from typing import Any
+
+from .account import AccountBinding
 
 EFFORTS = ("low", "medium", "high", "xhigh", "max")
 PERMISSION_MODES = ("plan", "acceptEdits", "auto", "dontAsk", "bypassPermissions", "manual")
@@ -81,12 +82,14 @@ def _find_result_record(payload: Any) -> dict | None:
     return None
 
 
-def run_claude(argv: list[str], prompt: str, *, cwd: str, timeout: float | None = None) -> ClaudeResult:
+def run_claude(
+    argv: list[str], prompt: str, *, cwd: str, timeout: float | None = None,
+    account: AccountBinding | None = None,
+) -> ClaudeResult:
     """Run claude with the prompt on stdin and return the parsed result record."""
-    env = dict(os.environ)
-    # A parent Claude Code session marks its children; clearing it lets the
-    # companion be tested from inside Claude Code as well as from Codex.
-    env.pop("CLAUDECODE", None)
+    binding = account or AccountBinding.resolve()
+    env = binding.environment()
+    binding.verify(argv[0], env)
     try:
         proc = subprocess.run(
             argv,

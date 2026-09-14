@@ -17,6 +17,12 @@ claude-companion task [--write] [--model <m>] [--effort low|medium|high|xhigh|ma
 `claude-companion` is on PATH after install. If it is not, run the copy next to
 this skill: `<this skill's directory>/../../scripts/claude-companion`.
 
+In OpenCode profiles, keep the launcher's `CLAUDE_COMPANION_CONFIG_DIR` and
+`CLAUDE_COMPANION_ACCOUNT` binding. The companion verifies the selected Claude
+login before dispatch. An AnswerThis task must not silently fall back to the
+personal login. Inspect the binding with `claude-companion setup --json`, or use
+`oc native <profile> claude task ...` from an ordinary terminal.
+
 Long requests can go on stdin instead of as an argument.
 
 ## Choosing flags
@@ -26,7 +32,7 @@ Long requests can go on stdin instead of as an argument.
   "what would you change".
 - **`--write`** lets Claude edit files in the working tree. Add it only when
   the user clearly wants Claude to make the change, not just describe it.
-  Codex's own sandbox still applies to the run.
+  The calling host's permissions still apply to the run.
 - **Model and effort.** Defaults: the user's Claude Code default model at
   `--effort high`. Override when the user names a model or effort, or when
   the task clearly warrants it: `--model fable` for a hard diagnosis or a
