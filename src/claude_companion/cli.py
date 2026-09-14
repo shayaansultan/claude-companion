@@ -14,6 +14,7 @@ import sys
 from pathlib import Path
 
 from . import __version__
+from .account import AccountBinding, AccountMismatch
 from .doctor import render_report, run_checks
 from .git import SCOPES, GitError, collect_context, resolve_target
 from .render import render_review, render_task
@@ -44,6 +45,7 @@ def _dry_run(argv: list[str], prompt: str, *, cwd: str) -> int:
 
 
 def _add_common(parser: argparse.ArgumentParser, *, default_model: str | None, default_effort: str) -> None:
+    _add_account_flags(parser)
     parser.add_argument(
         "--model",
         default=default_model,
@@ -56,6 +58,15 @@ def _add_common(parser: argparse.ArgumentParser, *, default_model: str | None, d
     parser.add_argument("--cwd", default=os.getcwd(), help="Repository directory (default: current directory)")
     parser.add_argument("--json", action="store_true", help="Print the raw result as JSON instead of markdown")
     parser.add_argument("--dry-run", action="store_true", help="Print the claude command and prompt without running it")
+
+
+def _add_account_flags(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument("--claude-config-dir", help="Claude home, or 'default'; otherwise use the profile environment")
+    parser.add_argument("--account", help="Expected Claude login email; verified before task dispatch")
+
+
+def _account(args: argparse.Namespace) -> AccountBinding:
+    return AccountBinding.resolve(args.claude_config_dir, args.account)
 
 
 def cmd_review(args: argparse.Namespace) -> int:
@@ -105,7 +116,7 @@ def cmd_review(args: argparse.Namespace) -> int:
         f"reviewing {target.label} ({context.file_count} file(s), "
         f"{'inline diff' if context.inline_diff else 'self-collect'}) with Claude Code..."
     )
-    result = run_claude(argv, prompt, cwd=context.repo_root, timeout=args.timeout)
+    result = run_claude(argv, prompt, cwd=context.repo_root, timeout=args.timeout, account=_account(args))
 
     if args.json:
         print(json.dumps({"target": target.__dict__, "summary": context.summary, **result.__dict__}, indent=2, default=str))
@@ -160,7 +171,7 @@ def cmd_task(args: argparse.Namespace) -> int:
         return _dry_run(argv, prompt, cwd=os.path.abspath(args.cwd))
 
     progress(f"delegating task to Claude Code in {mode_label} mode...")
-    result = run_claude(argv, prompt, cwd=os.path.abspath(args.cwd), timeout=args.timeout)
+    result = run_claude(argv, prompt, cwd=os.path.abspath(args.cwd), timeout=args.timeout, account=_account(args))
 
     if args.json:
         print(json.dumps({"mode": mode, **result.__dict__}, indent=2, default=str))
@@ -170,7 +181,7 @@ def cmd_task(args: argparse.Namespace) -> int:
 
 
 def cmd_setup(args: argparse.Namespace) -> int:
-    report = run_checks()
+    report = run_checks(account=_account(args))
     if args.json:
         print(json.dumps(report.as_dict(), indent=2))
     else:
@@ -205,6 +216,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     setup = sub.add_parser("setup", help="Check that claude, auth, git and the Codex sandbox are ready")
     setup.add_argument("--json", action="store_true")
+    _add_account_flags(setup)
     setup.set_defaults(func=cmd_setup)
     return parser
 
@@ -213,6 +225,9 @@ def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     try:
         return args.func(args)
+    except AccountMismatch as error:
+        print(f"claude-companion: {error}", file=sys.stderr)
+        return 1
     except KeyboardInterrupt:
         return 130
 

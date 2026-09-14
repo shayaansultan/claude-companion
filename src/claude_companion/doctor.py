@@ -10,6 +10,7 @@ import tomllib
 from dataclasses import dataclass, field
 
 from . import __version__
+from .account import AccountBinding, AccountMismatch
 
 CODEX_CONFIG = os.path.expanduser("~/.codex/config.toml")
 
@@ -45,7 +46,7 @@ def _run(argv: list[str], timeout: float = 20) -> subprocess.CompletedProcess[st
         return None
 
 
-def check_claude() -> list[Check]:
+def check_claude(account: AccountBinding | None = None) -> list[Check]:
     exe = shutil.which("claude")
     if not exe:
         return [
@@ -60,8 +61,8 @@ def check_claude() -> list[Check]:
     version_text = version.stdout.strip() if version and version.returncode == 0 else "version unknown"
     checks = [Check("claude CLI", True, f"{exe} ({version_text})")]
 
-    env = dict(os.environ)
-    env.pop("CLAUDECODE", None)
+    binding = account or AccountBinding.resolve()
+    env = binding.environment()
     try:
         status = subprocess.run([exe, "auth", "status", "--json"], capture_output=True, text=True, timeout=20, env=env)
     except (OSError, subprocess.TimeoutExpired):
@@ -85,6 +86,14 @@ def check_claude() -> list[Check]:
             None if logged_in else "Run `claude auth login` in a terminal, then re-run setup.",
         )
     )
+
+    if binding.expected_email:
+        try:
+            binding.verify(exe, env)
+            checks.append(Check("profile account", True, f"verified {binding.expected_email}"))
+        except AccountMismatch as error:
+            checks.append(Check("profile account", False, str(error)))
+
     return checks
 
 
@@ -120,11 +129,15 @@ def check_git() -> Check:
     return Check("git", bool(exe), exe or "`git` is not on PATH.", None if exe else "Install Git.")
 
 
-def run_checks() -> Report:
+def run_checks(account: AccountBinding | None = None) -> Report:
     report = Report()
     report.checks.append(check_git())
-    report.checks.extend(check_claude())
-    report.checks.append(check_sandbox_network())
+    report.checks.extend(check_claude(account))
+    match os.environ.get("CLAUDE_COMPANION_HOST"):
+        case "opencode":
+            report.checks.append(Check("host", True, "OpenCode; Codex sandbox settings do not apply"))
+        case _:
+            report.checks.append(check_sandbox_network())
     return report
 
 
